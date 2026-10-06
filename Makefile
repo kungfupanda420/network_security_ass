@@ -2,7 +2,7 @@
 CC = gcc
 # Added include paths and SQLite linking flag
 CFLAGS = -Wall -Wextra -O2 -Isrc
-LDFLAGS = -lsqlite3
+LDFLAGS = -lsqlite3 -lpthread
 
 # Directories
 SRCDIR = src

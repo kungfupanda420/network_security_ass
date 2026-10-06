@@ -24,20 +24,19 @@ void iptables_log_ip(uint32_t ip_addr) {
     system(cmd);
 }
 
-void iptables_redirect_ip(uint32_t ip_addr, uint16_t honeypot_port) {
+void iptables_redirect_ip(uint32_t ip_addr, uint16_t target_port, uint16_t honeypot_port) {
     char ip_str[INET_ADDRSTRLEN];
     get_ip_str(ip_addr, ip_str);
     
     char cmd[256];
-    // NAT PREROUTING: Transparently redirect all TCP traffic from attacker to the local honeypot
+    // NAT PREROUTING: Redirect specific target port to our honeypot port
     snprintf(cmd, sizeof(cmd), 
-             "iptables -t nat -A PREROUTING -s %s -p tcp -j REDIRECT --to-port %u", 
-             ip_str, honeypot_port);
+             "iptables -t nat -A PREROUTING -s %s -p tcp --dport %u -j REDIRECT --to-port %u", 
+             ip_str, target_port, honeypot_port);
              
     printf("[EXEC] %s\n", cmd);
     system(cmd);
 }
-
 void iptables_block_ip(uint32_t ip_addr) {
     char ip_str[INET_ADDRSTRLEN];
     get_ip_str(ip_addr, ip_str);

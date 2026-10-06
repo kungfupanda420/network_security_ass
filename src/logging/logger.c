@@ -18,7 +18,7 @@ void logger_init() {
     }
 }
 
-void log_attack_event(uint32_t ip_addr, const char *scan_type, int risk_tier, const char *action_taken) {
+void log_attack_event(uint32_t ip_addr, uint16_t dest_port, const char *scan_type, int risk_tier, const char *action_taken) {
     struct in_addr ip_struct;
     ip_struct.s_addr = ip_addr;
     const char *ip_str = inet_ntoa(ip_struct);
@@ -28,6 +28,6 @@ void log_attack_event(uint32_t ip_addr, const char *scan_type, int risk_tier, co
     else if (risk_tier == 2) risk_str = "MEDIUM";
     else if (risk_tier == 3) risk_str = "HIGH";
 
-    // Write to SQLite database
-    db_insert_event(ip_str, scan_type, risk_str, action_taken);
+    // Pass dest_port down to the database module
+    db_insert_event(ip_str, dest_port, scan_type, risk_str, action_taken);
 }
