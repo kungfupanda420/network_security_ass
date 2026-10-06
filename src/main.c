@@ -1,6 +1,7 @@
 #include "capture/packet_capture.h"
-
+#include "detection/ip_tracker.h"
 int main() {
+    init_tracker();
     // Raw sockets require root privileges in Linux
     if (geteuid() != 0) {
         fprintf(stderr, "Error: You must run this program as root (sudo).\n");

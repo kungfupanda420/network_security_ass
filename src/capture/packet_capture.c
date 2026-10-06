@@ -1,4 +1,6 @@
 #include "packet_capture.h"
+#include "../detection/scan_detector.h"
+#include "detection/classifier.h"
 
 void start_packet_capture(int sock_raw) {
     unsigned char *buffer = (unsigned char *)malloc(BUFFER_SIZE);
@@ -28,38 +30,28 @@ void start_packet_capture(int sock_raw) {
 }
 
 void process_packet(unsigned char *buffer, int size) {
-    // The buffer contains the IP header at the very beginning
     struct iphdr *iph = (struct iphdr *)buffer;
-    
-    // Calculate the length of the IP header (ihl is in 32-bit words, so multiply by 4)
     unsigned short iphdrlen = iph->ihl * 4;
-    
-    // The TCP header starts immediately after the IP header
     struct tcphdr *tcph = (struct tcphdr *)(buffer + iphdrlen);
     
+    // 1. Classify the packet using your new module
+    const char* scan_type = classify_packet(tcph);
+
+    // Skip normal traffic to avoid filling up the terminal and tracking array
+    if (strcmp(scan_type, "NORMAL") == 0) {
+        return;
+    }
+
     struct sockaddr_in source, dest;
     memset(&source, 0, sizeof(source));
     source.sin_addr.s_addr = iph->saddr;
-    
     memset(&dest, 0, sizeof(dest));
     dest.sin_addr.s_addr = iph->daddr;
 
-    // Print packet details
+    // 2. Print suspicious packets
     printf("IP %s:%u -> ", inet_ntoa(source.sin_addr), ntohs(tcph->source));
-    printf("%s:%u ", inet_ntoa(dest.sin_addr), ntohs(tcph->dest));
-    
-    // Print TCP Flags to identify scan types (SYN, FIN, NULL, XMAS)
-    printf("[Flags:");
-    if (tcph->syn) printf(" SYN");
-    if (tcph->fin) printf(" FIN");
-    if (tcph->rst) printf(" RST");
-    if (tcph->psh) printf(" PSH");
-    if (tcph->ack) printf(" ACK");
-    if (tcph->urg) printf(" URG");
-    
-    // Detect NULL scan (no flags set)
-    if (!tcph->syn && !tcph->fin && !tcph->rst && !tcph->psh && !tcph->ack && !tcph->urg) {
-        printf(" NONE (NULL)");
-    }
-    printf(" ]\n");
+    printf("%s:%u [Type: %s]\n", inet_ntoa(dest.sin_addr), ntohs(tcph->dest), scan_type);
+
+    // 3. Send to the detection engine
+    analyze_packet_for_scan(iph->saddr, ntohs(tcph->dest), scan_type);
 }
