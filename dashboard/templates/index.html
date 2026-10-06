@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Overview - Network Defense{% endblock %}
+
+{% block content %}
+<h1>System Overview</h1>
+
+<div class="grid">
+    <div class="card"><h3>Total Attacks</h3><p id="total_attacks">0</p></div>
+    <div class="card"><h3>Unique Attackers</h3><p id="unique_attackers">0</p></div>
+    <div class="card warning"><h3>Honeypot Redirects</h3><p id="honeypot_redirects">0</p></div>
+    <div class="card alert"><h3>Blocked IPs</h3><p id="blocked_ips">0</p></div>
+</div>
+
+<h2>Recent Critical Alerts</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Timestamp</th>
+            <th>Attacker IP</th>
+            <th>Target Port</th>
+            <th>Scan Type</th>
+            <th>Risk Level</th>
+            <th>Action Taken</th>
+        </tr>
+    </thead>
+    <tbody id="recent_events_table">
+        <tr><td colspan="6" style="text-align: center;">Loading data...</td></tr>
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function fetchDashboardStats() {
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) return;
+                
+                document.getElementById('total_attacks').innerText = data.total_attacks;
+                document.getElementById('unique_attackers').innerText = data.unique_attackers;
+                document.getElementById('blocked_ips').innerText = data.blocked_ips;
+                // Assuming you add a count for honeypot redirects in your API
+                document.getElementById('honeypot_redirects').innerText = data.redirects || 0;
+
+                const tableBody = document.getElementById('recent_events_table');
+                tableBody.innerHTML = '';
+                
+                data.recent_events.forEach(event => {
+                    tableBody.innerHTML += `<tr>
+                        <td>${event.timestamp}</td>
+                        <td style="color: #58a6ff;">${event.ip}</td>
+                        <td>${event.target_port}</td>
+                        <td>${event.scan_type}</td>
+                        <td><span class="badge ${event.risk_level}">${event.risk_level}</span></td>
+                        <td>${event.action}</td>
+                    </tr>`;
+                });
+            });
+    }
+    fetchDashboardStats();
+    setInterval(fetchDashboardStats, 2000); // Live poll every 2 seconds
+</script>
+{% endblock %}
