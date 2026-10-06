@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Threat Intel - Network Defense{% endblock %}
+
+{% block content %}
+<h1>Identified Attackers</h1>
+<p>Unique IP addresses tracked by the detection engine.</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Attacker IP</th>
+            <th>Total Scan Packets</th>
+            <th>Most Targeted Port</th>
+            <th>Highest Risk Reached</th>
+            <th>Current Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for attacker in attackers %}
+        <tr>
+            <td style="color: #58a6ff; font-weight: bold;">{{ attacker.ip }}</td>
+            <td>{{ attacker.packet_count }}</td>
+            <td>{{ attacker.top_port }}</td>
+            <td><span class="badge {{ attacker.max_risk }}">{{ attacker.max_risk }}</span></td>
+            <td>
+                {% if attacker.max_risk == 'HIGH' %}
+                    <span style="color: #f85149;">BLOCKED (Dropped)</span>
+                {% elif attacker.max_risk == 'MEDIUM' %}
+                    <span style="color: #f2cc60;">REDIRECTED (Honeypot)</span>
+                {% else %}
+                    <span style="color: #8b949e;">LOGGED (Monitoring)</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="5" style="text-align: center;">No attackers identified yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

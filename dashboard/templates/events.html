@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Event Logs - Network Defense{% endblock %}
+
+{% block content %}
+<h1>All Network Events</h1>
+<p>Complete historical log of all detected reconnaissance and attack attempts.</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Timestamp</th>
+            <th>Source IP</th>
+            <th>Target Port</th>
+            <th>Scan Type</th>
+            <th>Risk Level</th>
+            <th>Action Executed</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in events %}
+        <tr>
+            <td>{{ event.id }}</td>
+            <td>{{ event.timestamp }}</td>
+            <td style="color: #58a6ff;">{{ event.ip }}</td>
+            <td>{{ event.target_port }}</td>
+            <td>{{ event.scan_type }}</td>
+            <td><span class="badge {{ event.risk_level }}">{{ event.risk_level }}</span></td>
+            <td>{{ event.action }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7" style="text-align: center;">No events logged yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Honeypot Traps - Network Defense{% endblock %}
+
+{% block content %}
+<h1>Honeypot Interactions</h1>
+<p>Traffic intercepted at the MEDIUM risk tier and redirected to fake services.</p>
+
+<div class="grid">
+    <div class="card"><h3>Total Trapped Packets</h3><p>{{ trapped_count }}</p></div>
+    <div class="card warning"><h3>SSH (2222) Hits</h3><p>{{ ssh_hits }}</p></div>
+    <div class="card warning"><h3>FTP (2121) Hits</h3><p>{{ ftp_hits }}</p></div>
+    <div class="card warning"><h3>HTTP (8080) Hits</h3><p>{{ http_hits }}</p></div>
+</div>
+
+<h2>Redirect Log</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Timestamp</th>
+            <th>Attacker IP</th>
+            <th>Original Target Port</th>
+            <th>Routed To</th>
+            <th>Action Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in redirects %}
+        <tr>
+            <td>{{ event.timestamp }}</td>
+            <td style="color: #58a6ff;">{{ event.ip }}</td>
+            <td>{{ event.target_port }}</td>
+            <td>
+                {% if event.target_port == 22 %} Port 2222 (Fake SSH)
+                {% elif event.target_port == 21 %} Port 2121 (Fake FTP)
+                {% else %} Port 8080 (Fake HTTP Admin) {% endif %}
+            </td>
+            <td style="color: #2ea043;">SUCCESS</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="5" style="text-align: center;">No honeypot redirects logged yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
