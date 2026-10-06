@@ -1,7 +1,8 @@
 # Compiler settings
 CC = gcc
-# Added -Isrc/capture so main.c can find packet_capture.h
-CFLAGS = -Wall -Wextra -O2 -Isrc -Isrc/capture
+# Added include paths and SQLite linking flag
+CFLAGS = -Wall -Wextra -O2 -Isrc
+LDFLAGS = -lsqlite3
 
 # Directories
 SRCDIR = src
@@ -24,7 +25,7 @@ all: $(TARGET)
 # Link object files to create the executable
 $(TARGET): $(OBJECTS)
 	@echo "Linking $@"
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 	@echo "Build successful! Run with: sudo ./$(TARGET)"
 
 # Compile C files into object files and create subdirectories as needed
