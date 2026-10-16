@@ -1,23 +1,67 @@
 #include "packet_capture.h"
+#include "../detection/classifier.h"
 #include "../detection/scan_detector.h"
-#include "detection/classifier.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+
+// Renamed to avoid conflict with the honeypot BUFFER_SIZE
+#define CAPTURE_BUFFER_SIZE 65536 
+
+void process_packet(unsigned char *buffer, int size) {
+    (void)size; // Tells the compiler we intentionally aren't using this variable yet
+    
+    struct iphdr *iph = (struct iphdr *)buffer;
+    int iphdrlen = iph->ihl * 4;
+
+    if (iph->protocol == 6) { // TCP Protocol
+        struct tcphdr *tcph = (struct tcphdr *)(buffer + iphdrlen);
+        
+        // ---> FILTER: Ignore traffic to/from the Flask Dashboard (Port 5000) <---
+        if (ntohs(tcph->source) == 5000 || ntohs(tcph->dest) == 5000) {
+            return;
+        }
+
+        const char* scan_type = classify_packet(tcph);
+        
+        // Only log and process if it is classified as a suspicious packet
+        if (strcmp(scan_type, "Normal") != 0) {
+            struct in_addr src_ip, dest_ip;
+            src_ip.s_addr = iph->saddr;
+            dest_ip.s_addr = iph->daddr;
+            
+            uint16_t dest_port = ntohs(tcph->dest);
+            
+            printf("IP %s:%u -> %s:%u [Type: %s]\n", 
+                   inet_ntoa(src_ip), ntohs(tcph->source), 
+                   inet_ntoa(dest_ip), dest_port, scan_type);
+
+            // Pass the source IP, destination port, and scan type to the detection engine
+            analyze_packet_for_scan(iph->saddr, dest_port, scan_type);
+        }
+    }
+}
 
 void start_packet_capture(int sock_raw) {
-    unsigned char *buffer = (unsigned char *)malloc(BUFFER_SIZE);
+    unsigned char *buffer = (unsigned char *)malloc(CAPTURE_BUFFER_SIZE);
     if (!buffer) {
-        perror("Memory allocation failed");
+        perror("Failed to allocate buffer");
         exit(1);
     }
-
-    struct sockaddr_in saddr;
-    int saddr_len = sizeof(saddr);
 
     printf("Starting packet capture. Listening for incoming TCP packets...\n");
 
     while (1) {
-        // Receive a packet
-        int data_size = recvfrom(sock_raw, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&saddr, (socklen_t*)&saddr_len);
+        struct sockaddr saddr;
+        int saddr_size = sizeof(saddr);
         
+        int data_size = recvfrom(sock_raw, buffer, CAPTURE_BUFFER_SIZE, 0, &saddr, (socklen_t*)&saddr_size);
         if (data_size < 0) {
             perror("Recvfrom error");
             return;
@@ -25,33 +69,5 @@ void start_packet_capture(int sock_raw) {
         
         process_packet(buffer, data_size);
     }
-    
     free(buffer);
-}
-
-void process_packet(unsigned char *buffer, int size) {
-    struct iphdr *iph = (struct iphdr *)buffer;
-    unsigned short iphdrlen = iph->ihl * 4;
-    struct tcphdr *tcph = (struct tcphdr *)(buffer + iphdrlen);
-    
-    // 1. Classify the packet using your new module
-    const char* scan_type = classify_packet(tcph);
-
-    // Skip normal traffic to avoid filling up the terminal and tracking array
-    if (strcmp(scan_type, "NORMAL") == 0) {
-        return;
-    }
-
-    struct sockaddr_in source, dest;
-    memset(&source, 0, sizeof(source));
-    source.sin_addr.s_addr = iph->saddr;
-    memset(&dest, 0, sizeof(dest));
-    dest.sin_addr.s_addr = iph->daddr;
-
-    // 2. Print suspicious packets
-    printf("IP %s:%u -> ", inet_ntoa(source.sin_addr), ntohs(tcph->source));
-    printf("%s:%u [Type: %s]\n", inet_ntoa(dest.sin_addr), ntohs(tcph->dest), scan_type);
-
-    // 3. Send to the detection engine
-    analyze_packet_for_scan(iph->saddr, ntohs(tcph->dest), scan_type);
 }
