@@ -1,51 +1,44 @@
 #include "ip_tracker.h"
+#include <stdio.h>
 #include <string.h>
 
-// Simple fixed array for tracking to keep memory management safe and fast
-static ip_record tracker[MAX_TRACKED_IPS];
-static int active_ips = 0;
+static ip_record ip_table[MAX_TRACKED_IPS];
+static int tracked_count = 0;
 
 void init_tracker() {
-    memset(tracker, 0, sizeof(tracker));
-    active_ips = 0;
+    memset(ip_table, 0, sizeof(ip_table));
+    tracked_count = 0;
 }
 
 ip_record* get_or_create_ip_record(uint32_t ip_addr) {
-    // 1. Check if IP already exists
-    for (int i = 0; i < active_ips; i++) {
-        if (tracker[i].ip_addr == ip_addr) {
-            return &tracker[i];
+    for (int i = 0; i < tracked_count; i++) {
+        if (ip_table[i].ip_addr == ip_addr) {
+            return &ip_table[i];
         }
     }
 
-    // 2. If not found, create a new record (if we have space)
-    if (active_ips < MAX_TRACKED_IPS) {
-        tracker[active_ips].ip_addr = ip_addr;
-        tracker[active_ips].unique_ports_count = 0;
-        tracker[active_ips].first_packet_time = time(NULL);
-        tracker[active_ips].alert_triggered = 0;
-        active_ips++;
-        return &tracker[active_ips - 1];
+    if (tracked_count < MAX_TRACKED_IPS) {
+        ip_record *rec = &ip_table[tracked_count++];
+        memset(rec, 0, sizeof(ip_record));
+        rec->ip_addr = ip_addr;
+        rec->first_packet_time = time(NULL);
+        return rec;
     }
 
-    // Tracker is full (in a real scenario, you would evict the oldest entry)
-    return NULL; 
+    return NULL; // Table full
 }
 
-// Returns 1 if a new port was added, 0 if it was a duplicate
-int add_port_to_record(ip_record *record, uint16_t port) {
-    // Check for duplicates
-    for (int i = 0; i < record->unique_ports_count; i++) {
-        if (record->ports[i] == port) {
-            return 0; // Port already tracked
+int add_port_to_record(ip_record *rec, uint16_t port) {
+    for (int i = 0; i < rec->unique_ports_count; i++) {
+        if (rec->ports[i] == port) {
+            return 0; // Port already recorded in this window
         }
     }
 
-    // Add new port if under limit
-    if (record->unique_ports_count < MAX_PORTS_PER_IP) {
-        record->ports[record->unique_ports_count] = port;
-        record->unique_ports_count++;
-        return 1;
+    if (rec->unique_ports_count < MAX_PORTS_PER_IP) {
+        rec->ports[rec->unique_ports_count++] = port;
+        return 1; // New unique port recorded
     }
+
     return 0;
 }
