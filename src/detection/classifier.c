@@ -17,10 +17,10 @@ const char* classify_packet(const struct tcphdr *tcph) {
     else if (tcph->fin && !tcph->ack && !tcph->urg && !tcph->psh) {
         return "FIN";
     }
-    // ACK scan: ACK set (used by Nmap to map firewall rules)
-    else if (tcph->ack && !tcph->syn && !tcph->fin && !tcph->rst) {
+    // Pure ACK probe (excludes normal PSH+ACK data packets)
+    else if (tcph->ack && !tcph->syn && !tcph->fin && !tcph->rst && !tcph->psh) {
         return "ACK";
     }
-    
-    return "NORMAL"; 
+
+    return "NORMAL";
 }

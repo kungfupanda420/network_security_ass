@@ -1,43 +1,40 @@
 #!/bin/bash
 
-# Check for root privileges
 if [ "$EUID" -ne 0 ]; then
   echo "Error: You must run the Defense Engine as root (sudo)."
   exit 1
 fi
 
-echo "=========================================================="
-echo "  Adaptive Network Intrusion Detection & Honeypot System  "
-echo "=========================================================="
-echo ""
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.." || exit 1
 
-# 1. Ensure we are in the project root directory
-SCRIPT_DIR=$(dirname "$0")
-cd "$SCRIPT_DIR/.." || exit
-
-# 2. Clean up old database due to schema changes
-if [ -f "database/alerts.db" ]; then
-    echo "[*] Removing old database to apply new schema..."
-    rm database/alerts.db
-fi
 mkdir -p database logs
 
-# 3. Recompile the C project completely
-echo "[*] Compiling the Defense Engine..."
-make clean
-make
+# Generate SSH honeypot key once if missing
+if [ ! -f "logs/honeypot_rsa_key" ]; then
+    ssh-keygen -t rsa -b 2048 -f logs/honeypot_rsa_key -N "" -q
+fi
 
+# Auto-detect LAN IP if not passed by start_all.sh
+if [ -z "$HOST_IP" ]; then
+    LAN_IFACE=$(ip route | awk '/default/ {print $5; exit}')
+    HOST_IP=$(ip -4 addr show "$LAN_IFACE" 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | head -n1)
+fi
+
+# Compile silently unless an error occurs
+BUILD_LOG=$(make clean 2>&1 && make 2>&1)
 if [ $? -ne 0 ]; then
-    echo "[-] Compilation failed! Please check the C code."
+    echo "[-] Compilation failed:"
+    echo "$BUILD_LOG"
     exit 1
 fi
 
-# 4. Run the IPTables setup script to ensure a clean firewall state
-echo "[*] Applying clean firewall baseline..."
+# Apply clean firewall baseline silently
 chmod +x scripts/setup_iptables.sh
-./scripts/setup_iptables.sh
+./scripts/setup_iptables.sh >/dev/null 2>&1
 
-# 5. Execute the compiled binary
-echo "[*] Starting the Defense Engine and Fake Honeypot Services..."
-echo "----------------------------------------------------------"
-./build/defense_engine
+export HOST_IP
+export LAN_IFACE
+
+# Stream live defense engine logs unbuffered
+stdbuf -oL -eL ./build/defense_engine

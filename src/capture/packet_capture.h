@@ -11,9 +11,9 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
-#define BUFFER_SIZE 65536
+#define CAPTURE_BUFFER_SIZE 65536
 
-int create_raw_socket();
+int create_raw_socket(void);
 void start_packet_capture(int sock_raw);
 void process_packet(unsigned char *buffer, int size);
 
