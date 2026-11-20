@@ -62,15 +62,8 @@ sudo apt install python3-flask
 2. **Launch the Core Defense Engine:**
    This script automatically compiles the C code, cleans the firewall state, initializes the database, and starts the raw socket listener and honeypot threads.
    ```bash
-   sudo ./scripts/run_detector.sh
+   sudo ./scripts/start_all.sh
    ```
-
-3. **Launch the Live Dashboard (Open a new terminal):**
-   ```bash
-   cd dashboard
-   sudo python3 app.py
-   ```
-   Navigate to `http://localhost:5000` in your web browser to view the live dashboard.
 
 ## Testing the System
 
